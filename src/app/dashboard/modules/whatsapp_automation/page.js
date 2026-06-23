@@ -7,13 +7,13 @@ const h   = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer 
 
 /* ─── sidebar feature list ─────────────────────────────── */
 const FEATURES = [
-  { key: 'login',        label: 'Login / Logout',     icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
   { key: 'send',         label: 'Send Message',        icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> },
   { key: 'inbox',        label: 'Get Message',         icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
   { key: 'autoresponder',label: 'Quick Reply',         icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg> },
   { key: 'chatbot',      label: 'Chatbot (Workflow)',  icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
   { key: 'form',         label: 'Form Creation',       icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
   { key: 'ai',           label: 'AI Auto Responder',   icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
+  { key: 'templates',    label: 'Message Templates',   cloudOnly: true, icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg> },
   { key: 'ecommerce',    label: 'E-commerce',          icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> },
 ];
 
@@ -38,7 +38,7 @@ function NotConnected() {
         </svg>
       </div>
       <p className="text-sm font-semibold text-zinc-300">WhatsApp not connected</p>
-      <p className="text-xs text-zinc-500 mt-1">Go to Login / Logout tab and scan the QR code first.</p>
+      <p className="text-xs text-zinc-500 mt-1">Connect WhatsApp in <a href="/dashboard/vault" className="underline text-green-400 hover:text-green-300">Credential Management</a> first (QR or Official API).</p>
     </div>
   );
 }
@@ -49,85 +49,6 @@ function Input({ label, value, onChange, placeholder, type = 'text', required })
       <label className="block text-xs font-medium text-zinc-400 mb-1.5">{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>
       <input type={type} value={value} onChange={onChange} placeholder={placeholder} required={required}
         className="w-full px-3.5 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition" />
-    </div>
-  );
-}
-
-/* ─── LOGIN TAB ────────────────────────────────────────── */
-function LoginTab({ session, onStart, onLogout }) {
-  const [loading, setLoading] = useState(false);
-
-  const start = async () => {
-    setLoading(true);
-    await onStart();
-    setLoading(false);
-  };
-
-  if (session.status === 'connected') {
-    return (
-      <div className="p-8 max-w-sm">
-        <div className="bg-green-400/5 border border-green-400/20 rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-400/10 text-green-400 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <h3 className="text-lg font-bold text-white">Connected</h3>
-          {session.phone && <p className="text-sm text-zinc-400 mt-1 font-mono">{session.phone.split('@')[0]}</p>}
-          <p className="text-xs text-zinc-500 mt-3 mb-6">Your WhatsApp is active. All features are available.</p>
-          <button onClick={onLogout} className="w-full py-2 text-sm font-semibold bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors">
-            Logout / Disconnect
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (session.status === 'qr' && session.qrBase64) {
-    return (
-      <div className="p-8 max-w-sm">
-        <h2 className="text-lg font-bold text-white mb-1">Scan QR Code</h2>
-        <p className="text-sm text-zinc-400 mb-6">Open WhatsApp → <strong>Settings</strong> → <strong>Linked Devices</strong> → <strong>Link a Device</strong></p>
-        <div className="bg-white rounded-2xl p-4 inline-block mb-6 shadow-lg">
-          <img src={session.qrBase64} alt="WhatsApp QR" width={240} height={240} />
-        </div>
-        <p className="flex items-center gap-2 text-xs text-amber-400">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-          Waiting for scan… QR refreshes automatically
-        </p>
-      </div>
-    );
-  }
-
-  if (session.status === 'connecting') {
-    return (
-      <div className="p-8 max-w-sm">
-        <div className="flex items-center gap-3 text-zinc-400">
-          <span className="w-4 h-4 border-2 border-zinc-600 border-t-green-400 rounded-full animate-spin shrink-0" />
-          Connecting to WhatsApp…
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-8 max-w-sm">
-      <div className="mb-8">
-        <div className="w-16 h-16 rounded-2xl bg-green-400/10 text-green-400 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-            <path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.878-1.42A9.945 9.945 0 0011.999 22C17.522 22 22 17.523 22 12S17.522 2 11.999 2zm0 18.18c-1.706 0-3.3-.46-4.67-1.266l-.334-.199-3.464 1.008 1.033-3.365-.217-.348A8.124 8.124 0 013.818 12c0-4.515 3.667-8.18 8.181-8.18 4.513 0 8.18 3.665 8.18 8.18 0 4.514-3.667 8.18-8.18 8.18z"/>
-          </svg>
-        </div>
-        <h2 className="text-xl font-bold text-white">Connect WhatsApp</h2>
-        <p className="text-sm text-zinc-400 mt-1">Link your WhatsApp account to start using all automation features.</p>
-      </div>
-      {session.error && <Banner msg={session.error} />}
-      <button onClick={start} disabled={loading}
-        className="w-full py-3 text-sm font-semibold bg-green-400 text-zinc-900 rounded-xl hover:bg-green-300 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
-        {loading
-          ? <><span className="w-4 h-4 border-2 border-zinc-700 border-t-transparent rounded-full animate-spin" /> Initialising…</>
-          : 'Generate QR Code'}
-      </button>
-      <p className="mt-4 text-xs text-zinc-500">Supports QR code login and Facebook Embedded Signup. Sessions persist across page reloads.</p>
     </div>
   );
 }
@@ -599,8 +520,181 @@ function AITab({ connected }) {
 
       {!connected && (
         <p className="text-xs text-zinc-500 mt-5">
-          Note: WhatsApp is not connected. AI replies only fire on live incoming messages once you connect in the Login tab.
+          Note: WhatsApp is not connected. AI replies only fire on live incoming messages once you connect in the Connection tab.
         </p>
+      )}
+    </div>
+  );
+}
+
+/* ─── MESSAGE TEMPLATES TAB (Cloud API only) ───────────── */
+const TPL_LANGS = [
+  { id: 'en_US', label: 'English (US)' },
+  { id: 'en_GB', label: 'English (UK)' },
+  { id: 'en',    label: 'English' },
+  { id: 'hi',    label: 'Hindi' },
+  { id: 'es',    label: 'Spanish' },
+  { id: 'pt_BR', label: 'Portuguese (BR)' },
+  { id: 'ar',    label: 'Arabic' },
+];
+
+const STATUS_STYLE = {
+  APPROVED: 'bg-green-400/10 text-green-400 border-green-400/20',
+  PENDING:  'bg-amber-400/10 text-amber-400 border-amber-400/20',
+  REJECTED: 'bg-red-400/10 text-red-400 border-red-400/20',
+  PAUSED:   'bg-zinc-700 text-zinc-300 border-zinc-600',
+};
+
+function TemplatesTab() {
+  const BLANK = { name: '', category: 'UTILITY', language: 'en_US', header: '', body: '', footer: '' };
+  const [form, setForm]       = useState(BLANK);
+  const [examples, setEx]     = useState([]);
+  const [list, setList]       = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState(null);
+
+  // Variable placeholders ({{1}}, {{2}}…) detected in the body.
+  const varCount = (form.body.match(/\{\{\s*\d+\s*\}\}/g) || []).length;
+  useEffect(() => {
+    setEx((prev) => Array.from({ length: varCount }, (_, i) => prev[i] || ''));
+  }, [varCount]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${API}/whatsapp/cloud/templates`, { headers: h() });
+      const data = await res.json();
+      if (res.ok) setList(data.templates ?? []);
+      else        setMsg({ ok: false, text: data.message || 'Failed to load templates' });
+    } catch { setMsg({ ok: false, text: 'Network error' }); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const submit = async (e) => {
+    e.preventDefault(); setSaving(true); setMsg(null);
+    try {
+      const res  = await fetch(`${API}/whatsapp/cloud/templates`, {
+        method: 'POST', headers: h(),
+        body: JSON.stringify({ ...form, bodyExamples: examples }),
+      });
+      const data = await res.json();
+      if (res.ok) { setMsg({ ok: true, text: `Submitted — status: ${data.status || 'PENDING'}` }); setForm(BLANK); setEx([]); load(); }
+      else        setMsg({ ok: false, text: data.message || 'Submission failed' });
+    } catch { setMsg({ ok: false, text: 'Network error' }); }
+    setSaving(false);
+  };
+
+  const del = async (name) => {
+    if (!confirm(`Delete template "${name}"?`)) return;
+    try {
+      const res  = await fetch(`${API}/whatsapp/cloud/templates/${encodeURIComponent(name)}`, { method: 'DELETE', headers: h() });
+      const data = await res.json();
+      if (res.ok) load();
+      else        setMsg({ ok: false, text: data.message || 'Delete failed' });
+    } catch { setMsg({ ok: false, text: 'Network error' }); }
+  };
+
+  return (
+    <div className="p-8 max-w-2xl">
+      <h2 className="text-lg font-bold text-white mb-1">Message Templates</h2>
+      <p className="text-sm text-zinc-400 mb-6">Submit templates directly to Meta for approval. Use <span className="font-mono text-zinc-300">{'{{1}}'}</span>, <span className="font-mono text-zinc-300">{'{{2}}'}</span>… as variables in the body.</p>
+
+      <Banner type={msg?.ok ? 'success' : 'error'} msg={msg?.text} />
+
+      {/* New template form */}
+      <form onSubmit={submit} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-7 space-y-3">
+        <h3 className="text-sm font-semibold text-white mb-1">New Template</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Name (lowercase, underscores)" value={form.name}
+            onChange={(e) => setForm(f => ({ ...f, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') }))}
+            placeholder="order_confirmation" required />
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Category <span className="text-red-400">*</span></label>
+            <select value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+              className="w-full px-3.5 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-400">
+              <option value="UTILITY">Utility</option>
+              <option value="MARKETING">Marketing</option>
+              <option value="AUTHENTICATION">Authentication</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5">Language</label>
+          <select value={form.language} onChange={(e) => setForm(f => ({ ...f, language: e.target.value }))}
+            className="w-full px-3.5 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-400">
+            {TPL_LANGS.map(l => <option key={l.id} value={l.id}>{l.label} — {l.id}</option>)}
+          </select>
+        </div>
+
+        <Input label="Header text (optional)" value={form.header} onChange={(e) => setForm(f => ({ ...f, header: e.target.value }))} placeholder="Your order is confirmed" />
+
+        <div>
+          <label className="block text-xs font-medium text-zinc-400 mb-1.5">Body <span className="text-red-400">*</span></label>
+          <textarea value={form.body} onChange={(e) => setForm(f => ({ ...f, body: e.target.value }))} rows={4} required
+            placeholder={'Hi {{1}}, your order {{2}} has been confirmed and will ship soon.'}
+            className="w-full px-3.5 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-400 resize-y transition" />
+        </div>
+
+        {varCount > 0 && (
+          <div className="space-y-2 bg-zinc-800/50 border border-zinc-700/60 rounded-xl p-3">
+            <p className="text-[11px] text-zinc-400">Example values (required by Meta for each variable):</p>
+            {examples.map((v, i) => (
+              <Input key={i} label={`Example for {{${i + 1}}}`} value={v}
+                onChange={(e) => setEx(arr => arr.map((x, j) => (j === i ? e.target.value : x)))}
+                placeholder={i === 0 ? 'Rahul' : 'ORD-001'} required />
+            ))}
+          </div>
+        )}
+
+        <Input label="Footer text (optional)" value={form.footer} onChange={(e) => setForm(f => ({ ...f, footer: e.target.value }))} placeholder="Reply STOP to opt out" />
+
+        <div className="flex justify-end">
+          <button type="submit" disabled={saving}
+            className="px-5 py-2 text-sm font-semibold bg-green-400 text-zinc-900 rounded-lg hover:bg-green-300 disabled:opacity-50 transition-colors">
+            {saving ? 'Submitting…' : 'Submit to Meta'}
+          </button>
+        </div>
+      </form>
+
+      {/* Existing templates */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white">Your Templates</h3>
+        <button onClick={load} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+
+      {loading ? <p className="text-sm text-zinc-500">Loading…</p> : list.length === 0 ? (
+        <p className="text-sm text-zinc-500 text-center py-8">No templates yet. Submit one above.</p>
+      ) : (
+        <div className="space-y-2">
+          {list.map((t) => {
+            const bodyText = t.components?.find(c => c.type === 'BODY')?.text || '';
+            return (
+              <div key={`${t.name}_${t.language}`} className="flex items-start gap-3 p-4 rounded-xl border bg-zinc-900 border-zinc-800">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-sm font-semibold text-white">{t.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${STATUS_STYLE[t.status] || 'bg-zinc-700 text-zinc-300 border-zinc-600'}`}>{t.status}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400">{t.category}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{t.language}</span>
+                  </div>
+                  <p className="text-xs text-zinc-400 truncate">{bodyText}</p>
+                  {t.status === 'REJECTED' && t.rejected_reason && (
+                    <p className="text-[11px] text-red-400 mt-1">Reason: {t.rejected_reason}</p>
+                  )}
+                </div>
+                <button onClick={() => del(t.name)} className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors shrink-0">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -623,45 +717,41 @@ function ComingSoon({ label }) {
 
 /* ─── ROOT ─────────────────────────────────────────────── */
 export default function WhatsAppPage() {
-  const [feature, setFeature]   = useState('login');
-  const [session, setSession]   = useState({ status: 'disconnected', qrBase64: null, phone: null, error: null });
-  const pollRef                 = useRef(null);
+  const [feature, setFeature] = useState('send');
+  const [conn, setConn]       = useState({ mode: 'qr', status: 'disconnected', qrBase64: null, phone: null, error: null, cloud: {} });
+  const pollRef               = useRef(null);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchConn = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/whatsapp/session/status`, { headers: h() });
+      const res  = await fetch(`${API}/whatsapp/connection`, { headers: h() });
       const data = await res.json();
-      setSession(data);
+      setConn(data);
       return data.status;
     } catch { return null; }
   }, []);
 
-  // On mount, check if a session already exists
-  useEffect(() => { fetchStatus(); }, [fetchStatus]);
+  // On mount, load the unified connection state
+  useEffect(() => { fetchConn(); }, [fetchConn]);
 
-  // Poll while connecting/waiting for QR scan
+  // Poll while a QR session is connecting/waiting for scan
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (['qr', 'connecting'].includes(session.status)) {
-      pollRef.current = setInterval(fetchStatus, 2500);
-    } else if (session.status === 'connected') {
-      pollRef.current = setInterval(fetchStatus, 20_000); // slow heartbeat
+    if (conn.mode === 'qr' && ['qr', 'connecting'].includes(conn.status)) {
+      pollRef.current = setInterval(fetchConn, 2500);
+    } else if (conn.status === 'connected') {
+      pollRef.current = setInterval(fetchConn, 20_000); // slow heartbeat
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [session.status, fetchStatus]);
+  }, [conn.mode, conn.status, fetchConn]);
 
-  const startSession = async () => {
-    const res  = await fetch(`${API}/whatsapp/session/start`, { method: 'POST', headers: h() });
-    const data = await res.json();
-    setSession(data);
-  };
+  const connected = conn.status === 'connected';
+  const cloudConnected = conn.mode === 'cloud' && !!conn.cloud?.verified;
+  const visibleFeatures = FEATURES.filter((f) => !f.cloudOnly || cloudConnected);
 
-  const logout = async () => {
-    await fetch(`${API}/whatsapp/session/logout`, { method: 'DELETE', headers: h() });
-    setSession({ status: 'disconnected', qrBase64: null, phone: null, error: null });
-  };
-
-  const connected = session.status === 'connected';
+  // If the active tab becomes hidden (e.g. cloud disconnected), fall back to Send.
+  useEffect(() => {
+    if (!visibleFeatures.some((f) => f.key === feature)) setFeature('send');
+  }, [visibleFeatures, feature]);
 
   /* status pill */
   const pill = {
@@ -670,7 +760,7 @@ export default function WhatsAppPage() {
     connecting:   { cls: 'bg-blue-400/10  text-blue-400  border-blue-400/20',   dot: 'bg-blue-400 animate-pulse',  label: 'Connecting…' },
     disconnected: { cls: 'bg-zinc-800 text-zinc-400 border-zinc-700',           dot: 'bg-zinc-500',   label: 'Disconnected' },
     error:        { cls: 'bg-red-400/10 text-red-400 border-red-400/20',        dot: 'bg-red-400',    label: 'Error' },
-  }[session.status] ?? { cls: 'bg-zinc-800 text-zinc-400 border-zinc-700', dot: 'bg-zinc-500', label: session.status };
+  }[conn.status] ?? { cls: 'bg-zinc-800 text-zinc-400 border-zinc-700', dot: 'bg-zinc-500', label: conn.status };
 
   return (
     <div className="flex min-h-full">
@@ -685,15 +775,20 @@ export default function WhatsAppPage() {
             </svg>
             <span className="text-sm font-bold text-white">WhatsApp</span>
           </div>
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${pill.cls}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${pill.dot}`} />
-            {pill.label}
+          <div className="flex items-center gap-1.5">
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${pill.cls}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${pill.dot}`} />
+              {pill.label}
+            </div>
+            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-zinc-800 text-zinc-400 border border-zinc-700">
+              {conn.mode === 'cloud' ? 'API' : 'QR'}
+            </span>
           </div>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 py-3">
-          {FEATURES.map((f) => {
+          {visibleFeatures.map((f) => {
             const active = feature === f.key;
             return (
               <button key={f.key} onClick={() => setFeature(f.key)}
@@ -715,12 +810,12 @@ export default function WhatsAppPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {feature === 'login'         && <LoginTab session={session} onStart={startSession} onLogout={logout} />}
         {feature === 'send'          && <SendTab connected={connected} />}
         {feature === 'inbox'         && <InboxTab connected={connected} />}
         {feature === 'autoresponder' && <AutoResponderTab connected={connected} />}
         {feature === 'ecommerce'     && <EcommerceTab connected={connected} />}
         {feature === 'ai'            && <AITab connected={connected} />}
+        {feature === 'templates'     && <TemplatesTab />}
         {feature === 'chatbot'       && <ComingSoon label="Chatbot (Workflow)" />}
         {feature === 'form'          && <ComingSoon label="Form Creation" />}
       </div>
