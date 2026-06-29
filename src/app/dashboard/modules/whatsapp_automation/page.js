@@ -9,6 +9,8 @@ const h   = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer 
 const FEATURES = [
   { key: 'send',         label: 'Send Message',        icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> },
   { key: 'inbox',        label: 'Get Message',         icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
+  { key: 'contacts',     label: 'Contact Details',     icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+  { key: 'campaign',     label: 'Campaign',            icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg> },
   { key: 'autoresponder',label: 'Quick Reply',         icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg> },
   { key: 'chatbot',      label: 'Chatbot (Workflow)',  icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
   { key: 'form',         label: 'Form Creation',       icon: <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
@@ -700,6 +702,450 @@ function TemplatesTab() {
   );
 }
 
+/* ─── CONTACTS TAB ─────────────────────────────────────── */
+const TAG_COLORS = ['bg-blue-400/10 text-blue-400 border-blue-400/20', 'bg-purple-400/10 text-purple-400 border-purple-400/20', 'bg-amber-400/10 text-amber-400 border-amber-400/20', 'bg-pink-400/10 text-pink-400 border-pink-400/20', 'bg-teal-400/10 text-teal-400 border-teal-400/20'];
+const tagColor = (tag) => TAG_COLORS[Math.abs([...tag].reduce((a, c) => a + c.charCodeAt(0), 0)) % TAG_COLORS.length];
+
+function TagBadge({ tag }) {
+  return <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${tagColor(tag)}`}>{tag}</span>;
+}
+
+function TagInput({ value, onChange }) {
+  const [draft, setDraft] = useState('');
+  const add = () => {
+    const t = draft.trim().toLowerCase().replace(/\s+/g, '_');
+    if (t && !value.includes(t)) onChange([...value, t]);
+    setDraft('');
+  };
+  return (
+    <div>
+      <label className="block text-xs font-medium text-zinc-400 mb-1.5">Tags / Categories</label>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {value.map((t) => (
+          <span key={t} className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${tagColor(t)}`}>
+            {t}
+            <button type="button" onClick={() => onChange(value.filter((x) => x !== t))} className="hover:opacity-60 leading-none">×</button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          placeholder="Type a tag and press Enter" className="flex-1 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-400" />
+        <button type="button" onClick={add} className="px-3 py-2 text-sm bg-zinc-700 text-white rounded-lg hover:bg-zinc-600">Add</button>
+      </div>
+    </div>
+  );
+}
+
+function ContactModal({ contact, onClose, onSaved }) {
+  const BLANK = { phone: '', name: '', email: '', city: '', state: '', country: '', tags: [], notes: '' };
+  const [form, setForm] = useState(contact ? { ...BLANK, ...contact } : BLANK);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+  const f = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const submit = async (ev) => {
+    ev.preventDefault(); setSaving(true); setErr('');
+    try {
+      const url    = contact ? `${API}/whatsapp/contacts/${contact._id}` : `${API}/whatsapp/contacts`;
+      const method = contact ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers: h(), body: JSON.stringify(form) });
+      const data   = await res.json();
+      if (res.ok) { onSaved(); onClose(); }
+      else        setErr(data.message || 'Save failed');
+    } catch { setErr('Network error'); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg mx-4 p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-base font-bold text-white">{contact ? 'Edit Contact' : 'Add Contact'}</h3>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white p-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        {err && <Banner type="error" msg={err} />}
+        <form onSubmit={submit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Phone (with country code)" value={form.phone} onChange={f('phone')} placeholder="919876543210" required />
+            <Input label="Name" value={form.name} onChange={f('name')} placeholder="Rahul Sharma" />
+            <Input label="Email" value={form.email} onChange={f('email')} placeholder="rahul@example.com" />
+            <Input label="City" value={form.city} onChange={f('city')} placeholder="Noida" />
+            <Input label="State" value={form.state} onChange={f('state')} placeholder="UP" />
+            <Input label="Country" value={form.country} onChange={f('country')} placeholder="India" />
+          </div>
+          <TagInput value={form.tags} onChange={(tags) => setForm((p) => ({ ...p, tags }))} />
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Notes</label>
+            <textarea value={form.notes} onChange={f('notes')} rows={2} placeholder="Any notes…"
+              className="w-full px-3.5 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-400 resize-none" />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg">Cancel</button>
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-semibold bg-green-400 text-zinc-900 rounded-lg hover:bg-green-300 disabled:opacity-50">
+              {saving ? 'Saving…' : contact ? 'Update' : 'Add Contact'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ContactsTab() {
+  const [contacts, setContacts] = useState([]);
+  const [allTags, setAllTags]   = useState([]);
+  const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(false);
+  const [search, setSearch]     = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [modal, setModal]       = useState(null); // null | 'add' | contact object
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState(null);
+  const fileRef                 = useRef(null);
+
+  const loadTags = useCallback(async () => {
+    const res  = await fetch(`${API}/whatsapp/contacts/tags`, { headers: h() });
+    const data = await res.json();
+    setAllTags(data.tags ?? []);
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: 200 });
+      if (search)    params.set('search', search);
+      if (filterTag) params.set('tag', filterTag);
+      const res  = await fetch(`${API}/whatsapp/contacts?${params}`, { headers: h() });
+      const data = await res.json();
+      setContacts(data.contacts ?? []);
+      setTotal(data.total ?? 0);
+    } catch {} finally { setLoading(false); }
+  }, [search, filterTag]);
+
+  useEffect(() => { load(); loadTags(); }, [load, loadTags]);
+
+  const del = async (id) => {
+    if (!confirm('Delete this contact?')) return;
+    await fetch(`${API}/whatsapp/contacts/${id}`, { method: 'DELETE', headers: h() });
+    load(); loadTags();
+  };
+
+  const downloadSample = () => { window.open(`${API}/whatsapp/contacts/sample.csv`); };
+
+  const importCSV = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true); setImportMsg(null);
+    const form = new FormData(); form.append('file', file);
+    try {
+      const res  = await fetch(`${API}/whatsapp/contacts/import`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: form });
+      const data = await res.json();
+      setImportMsg({ ok: res.ok, text: data.message || (res.ok ? 'Imported' : 'Failed') });
+      if (res.ok) { load(); loadTags(); }
+    } catch { setImportMsg({ ok: false, text: 'Network error' }); }
+    setImporting(false);
+    e.target.value = '';
+  };
+
+  return (
+    <div className="p-8 max-w-4xl">
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-bold text-white">Contact Details</h2>
+          <p className="text-sm text-zinc-400 mt-0.5">{total} contacts · AI auto-responder saves contact info automatically</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={downloadSample} className="px-3 py-2 text-xs font-medium text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Sample CSV
+          </button>
+          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={importCSV} />
+          <button onClick={() => fileRef.current?.click()} disabled={importing}
+            className="px-3 py-2 text-xs font-medium text-zinc-900 bg-zinc-100 hover:bg-white border border-zinc-200 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            {importing ? 'Importing…' : 'Import CSV'}
+          </button>
+          <button onClick={() => setModal('add')}
+            className="px-3 py-2 text-xs font-semibold text-zinc-900 bg-green-400 hover:bg-green-300 rounded-lg transition-colors flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Contact
+          </button>
+        </div>
+      </div>
+
+      {importMsg && <Banner type={importMsg.ok ? 'success' : 'error'} msg={importMsg.text} />}
+
+      {/* Filters */}
+      <div className="flex gap-3 mb-5">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, phone, email, city…"
+            className="w-full pl-9 pr-3.5 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-400" />
+        </div>
+        <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}
+          className="px-3.5 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-400">
+          <option value="">All Tags</option>
+          {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <button onClick={() => { load(); loadTags(); }} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+
+      {loading ? <p className="text-sm text-zinc-500">Loading…</p> : contacts.length === 0 ? (
+        <div className="text-center py-16 text-zinc-500 text-sm">
+          <p>No contacts yet. Import a CSV or add manually.</p>
+          <p className="text-xs mt-1 text-zinc-600">AI auto-responder will also save contact info from incoming chats.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
+                <th className="pb-3 pr-4 font-medium">Phone</th>
+                <th className="pb-3 pr-4 font-medium">Name</th>
+                <th className="pb-3 pr-4 font-medium">City / State</th>
+                <th className="pb-3 pr-4 font-medium">Tags</th>
+                <th className="pb-3 pr-4 font-medium">Source</th>
+                <th className="pb-3 font-medium">Last Seen</th>
+                <th className="pb-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/60">
+              {contacts.map((c) => (
+                <tr key={c._id} className="hover:bg-zinc-800/30">
+                  <td className="py-3 pr-4 font-mono text-zinc-300 text-xs">{c.phone}</td>
+                  <td className="py-3 pr-4 text-white">{c.name || <span className="text-zinc-600">—</span>}</td>
+                  <td className="py-3 pr-4 text-zinc-400 text-xs">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
+                  <td className="py-3 pr-4"><div className="flex flex-wrap gap-1">{c.tags.map((t) => <TagBadge key={t} tag={t} />)}</div></td>
+                  <td className="py-3 pr-4"><span className={`text-[10px] px-1.5 py-0.5 rounded border ${c.source === 'ai' ? 'bg-purple-400/10 text-purple-400 border-purple-400/20' : c.source === 'csv' ? 'bg-blue-400/10 text-blue-400 border-blue-400/20' : 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>{c.source}</span></td>
+                  <td className="py-3 pr-4 text-zinc-500 text-xs">{c.lastSeen ? new Date(c.lastSeen).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setModal(c)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-700 rounded-lg">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button onClick={() => del(c._id)} className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {(modal === 'add' || (modal && typeof modal === 'object')) && (
+        <ContactModal
+          contact={modal === 'add' ? null : modal}
+          onClose={() => setModal(null)}
+          onSaved={() => { load(); loadTags(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ─── CAMPAIGN TAB ──────────────────────────────────────── */
+const STATUS_CLS = {
+  draft:   'bg-zinc-700 text-zinc-300 border-zinc-600',
+  sending: 'bg-blue-400/10 text-blue-400 border-blue-400/20 animate-pulse',
+  sent:    'bg-green-400/10 text-green-400 border-green-400/20',
+  failed:  'bg-red-400/10 text-red-400 border-red-400/20',
+};
+
+function CampaignModal({ campaign, allTags, onClose, onSaved }) {
+  const BLANK = { name: '', message: '', targetTags: [] };
+  const [form, setForm]   = useState(campaign ? { name: campaign.name, message: campaign.message, targetTags: campaign.targetTags } : BLANK);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+
+  const submit = async (ev) => {
+    ev.preventDefault(); setSaving(true); setErr('');
+    try {
+      const url    = campaign ? `${API}/whatsapp/campaigns/${campaign._id}` : `${API}/whatsapp/campaigns`;
+      const method = campaign ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers: h(), body: JSON.stringify(form) });
+      const data   = await res.json();
+      if (res.ok) { onSaved(); onClose(); }
+      else        setErr(data.message || 'Save failed');
+    } catch { setErr('Network error'); }
+    setSaving(false);
+  };
+
+  const toggleTag = (tag) => {
+    setForm((p) => ({
+      ...p,
+      targetTags: p.targetTags.includes(tag) ? p.targetTags.filter((t) => t !== tag) : [...p.targetTags, tag],
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg mx-4 p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-base font-bold text-white">{campaign ? 'Edit Campaign' : 'New Campaign'}</h3>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white p-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        {err && <Banner type="error" msg={err} />}
+        <form onSubmit={submit} className="space-y-4">
+          <Input label="Campaign Name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Summer Sale Blast" required />
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Message <span className="text-red-400">*</span></label>
+            <textarea value={form.message} onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))} rows={5} required
+              placeholder={'Hi {{name}}! We have a special offer for you in {{city}}. Reply YES to know more!'}
+              className="w-full px-3.5 py-2.5 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-400 resize-y" />
+            <p className="text-[11px] text-zinc-500 mt-1">Variables: <span className="font-mono">{'{{name}}'}</span> <span className="font-mono">{'{{city}}'}</span> <span className="font-mono">{'{{phone}}'}</span> <span className="font-mono">{'{{state}}'}</span> <span className="font-mono">{'{{country}}'}</span></p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-2">Target Audience</label>
+            {allTags.length === 0 ? (
+              <p className="text-xs text-zinc-500">No tags yet — campaign will send to all contacts.</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {allTags.map((t) => (
+                    <button key={t} type="button" onClick={() => toggleTag(t)}
+                      className={`text-xs px-2 py-1 rounded-lg border transition-colors ${form.targetTags.includes(t) ? 'bg-green-400/15 text-green-400 border-green-400/40' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-zinc-600">{form.targetTags.length === 0 ? 'No tags selected — all contacts will receive this' : `Sending to contacts tagged: ${form.targetTags.join(', ')}`}</p>
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg">Cancel</button>
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-semibold bg-green-400 text-zinc-900 rounded-lg hover:bg-green-300 disabled:opacity-50">
+              {saving ? 'Saving…' : campaign ? 'Update' : 'Create Campaign'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CampaignTab({ connected }) {
+  const [campaigns, setCampaigns]   = useState([]);
+  const [allTags, setAllTags]       = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [modal, setModal]           = useState(null);
+  const [sending, setSending]       = useState({});
+  const [sendMsg, setSendMsg]       = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [cr, tr] = await Promise.all([
+        fetch(`${API}/whatsapp/campaigns`, { headers: h() }).then((r) => r.json()),
+        fetch(`${API}/whatsapp/contacts/tags`, { headers: h() }).then((r) => r.json()),
+      ]);
+      setCampaigns(cr.campaigns ?? []);
+      setAllTags(tr.tags ?? []);
+    } catch {} finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const del = async (id) => {
+    if (!confirm('Delete this campaign?')) return;
+    await fetch(`${API}/whatsapp/campaigns/${id}`, { method: 'DELETE', headers: h() });
+    load();
+  };
+
+  const send = async (campaign) => {
+    if (!confirm(`Send "${campaign.name}" to ${campaign.targetTags.length ? `contacts tagged [${campaign.targetTags.join(', ')}]` : 'ALL contacts'}? This cannot be undone.`)) return;
+    setSending((p) => ({ ...p, [campaign._id]: true })); setSendMsg(null);
+    try {
+      const res  = await fetch(`${API}/whatsapp/campaigns/${campaign._id}/send`, { method: 'POST', headers: h() });
+      const data = await res.json();
+      setSendMsg({ ok: res.ok, text: data.message || (res.ok ? 'Sending…' : 'Failed') });
+      if (res.ok) setTimeout(load, 3000); // reload after a moment to show status
+    } catch { setSendMsg({ ok: false, text: 'Network error' }); }
+    setSending((p) => ({ ...p, [campaign._id]: false }));
+  };
+
+  if (!connected) return <NotConnected />;
+
+  return (
+    <div className="p-8 max-w-3xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-bold text-white">Campaigns</h2>
+          <p className="text-sm text-zinc-400 mt-0.5">Bulk-send personalised WhatsApp messages to contact groups</p>
+        </div>
+        <button onClick={() => setModal('new')} className="px-4 py-2 text-sm font-semibold bg-green-400 text-zinc-900 rounded-xl hover:bg-green-300 flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Campaign
+        </button>
+      </div>
+
+      {sendMsg && <Banner type={sendMsg.ok ? 'success' : 'error'} msg={sendMsg.text} />}
+
+      {loading ? <p className="text-sm text-zinc-500">Loading…</p> : campaigns.length === 0 ? (
+        <div className="text-center py-16 text-zinc-500 text-sm">No campaigns yet. Create one to bulk-message your contacts.</div>
+      ) : (
+        <div className="space-y-3">
+          {campaigns.map((c) => (
+            <div key={c._id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-sm font-semibold text-white">{c.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${STATUS_CLS[c.status] || STATUS_CLS.draft}`}>{c.status}</span>
+                    {c.targetTags.length > 0
+                      ? c.targetTags.map((t) => <TagBadge key={t} tag={t} />)
+                      : <span className="text-[10px] text-zinc-600">All contacts</span>}
+                  </div>
+                  <p className="text-xs text-zinc-400 truncate">{c.message}</p>
+                  {c.status === 'sent' && (
+                    <p className="text-[11px] text-zinc-500 mt-1.5">
+                      {c.totalSent} sent · {c.totalFailed} failed · {new Date(c.sentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {c.status === 'draft' && (
+                    <>
+                      <button onClick={() => setModal(c)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-700 rounded-lg">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button onClick={() => send(c)} disabled={sending[c._id]}
+                        className="px-3 py-1.5 text-xs font-semibold bg-green-400 text-zinc-900 rounded-lg hover:bg-green-300 disabled:opacity-50 flex items-center gap-1">
+                        {sending[c._id] ? <><span className="w-3 h-3 border-2 border-zinc-700 border-t-transparent rounded-full animate-spin" />Sending…</> : <>▶ Send</>}
+                      </button>
+                      <button onClick={() => del(c._id)} className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <CampaignModal
+          campaign={modal === 'new' ? null : modal}
+          allTags={allTags}
+          onClose={() => setModal(null)}
+          onSaved={load}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ─── COMING SOON ──────────────────────────────────────── */
 function ComingSoon({ label }) {
   return (
@@ -812,6 +1258,8 @@ export default function WhatsAppPage() {
       <div className="flex-1 overflow-y-auto">
         {feature === 'send'          && <SendTab connected={connected} />}
         {feature === 'inbox'         && <InboxTab connected={connected} />}
+        {feature === 'contacts'      && <ContactsTab />}
+        {feature === 'campaign'      && <CampaignTab connected={connected} />}
         {feature === 'autoresponder' && <AutoResponderTab connected={connected} />}
         {feature === 'ecommerce'     && <EcommerceTab connected={connected} />}
         {feature === 'ai'            && <AITab connected={connected} />}
