@@ -74,7 +74,7 @@ function WidgetPreview({ cfg }) {
             <svg className="w-3 h-3 fill-white" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
           </div>
         </div>
-        <div className="text-center text-[9px] text-zinc-700 py-1.5">Powered by EduyyBot</div>
+        <div className="text-center text-[9px] text-zinc-700 py-1.5">Powered by EdyyoBot</div>
       </div>
 
       {/* Float button */}
@@ -151,13 +151,13 @@ mounted() {
     'WordPress': `// Add to your theme's functions.php
 function add_website_bot() {
   wp_register_script(
-    'eduyybot-widget',
+    'EdyyoBot-widget',
     '${widgetSrc}',
     array(), null, true
   );
-  wp_enqueue_script('eduyybot-widget');
+  wp_enqueue_script('EdyyoBot-widget');
   add_filter('script_loader_tag', function($tag, $handle) {
-    if ($handle !== 'eduyybot-widget') return $tag;
+    if ($handle !== 'EdyyoBot-widget') return $tag;
     return str_replace(
       '<script',
       '<script data-user-id="${userId || 'YOUR_USER_ID'}"',
@@ -229,7 +229,7 @@ add_action('wp_enqueue_scripts', 'add_website_bot');`,
           </svg>
           <div className="text-xs text-zinc-300 space-y-1">
             <p className="font-medium text-amber-300">OpenRouter API Key required</p>
-            <p>Go to <strong>Credential Management → Add Credential</strong> and save your key with the name <code className="bg-zinc-800 px-1 py-0.5 rounded text-violet-300">openrouter_api_key</code>. The bot won't respond without it.</p>
+            <p>Go to <strong>Credential Management → Add Credential</strong> and save your OpenRouter key with the name <code className="bg-zinc-800 px-1 py-0.5 rounded text-violet-300">OPENROUTER_API_KEY</code>. If you already added it for WhatsApp AI, you're all set.</p>
           </div>
         </div>
       </div>
@@ -401,7 +401,7 @@ function ConversationsTab() {
 
 const DEFAULT_CFG = {
   botName: 'Assistant', botImage: '', greetingMessage: 'Hi! How can I help you today?',
-  companyInfo: '', autoExpand: false, isActive: true,
+  companyInfo: '', model: '', autoExpand: false, isActive: true,
 };
 
 function SettingsTab({ onSaved }) {
@@ -409,11 +409,16 @@ function SettingsTab({ onSaved }) {
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
   const [err, setErr]         = useState('');
+  const [models, setModels]   = useState([]);
 
   useEffect(() => {
     fetch(`${API}/websitebot/config`, { headers: authHdr() })
       .then(r => r.json())
       .then(d => { if (d.config) setForm({ ...DEFAULT_CFG, ...d.config }); })
+      .catch(() => {});
+    fetch(`${API}/websitebot/models`, { headers: authHdr() })
+      .then(r => r.json())
+      .then(d => { if (d.models) setModels(d.models); })
       .catch(() => {});
   }, []);
 
@@ -459,6 +464,32 @@ function SettingsTab({ onSaved }) {
           <label className="text-xs font-medium text-zinc-400">Greeting Message</label>
           <input className={inputCls} placeholder="Hi! How can I help you today?" value={form.greetingMessage}
             onChange={e => set('greetingMessage', e.target.value)} />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-zinc-400">AI Model</label>
+          <select
+            className={`${inputCls} cursor-pointer`}
+            value={form.model}
+            onChange={e => set('model', e.target.value)}
+          >
+            <option value="">Default (Llama 3.3 70B free)</option>
+            {models.length > 0 && (
+              <>
+                <optgroup label="── Free Models ──">
+                  {models.filter(m => m.free).map(m => (
+                    <option key={m.id} value={m.id}>{m.label} ✦ free</option>
+                  ))}
+                </optgroup>
+                <optgroup label="── Paid Models ──">
+                  {models.filter(m => !m.free).map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </optgroup>
+              </>
+            )}
+          </select>
+          <p className="text-[11px] text-zinc-500">Free models have rate limits. Paid models require OpenRouter credits but are faster and more reliable.</p>
         </div>
 
         <div className="space-y-1.5">
@@ -524,7 +555,8 @@ function SettingsTab({ onSaved }) {
           <p className="text-xs text-zinc-400">
             Save your OpenRouter API key in{' '}
             <a href="/dashboard/vault" className="text-violet-400 hover:underline">Credential Management</a>{' '}
-            under the name <code className="bg-zinc-700 px-1 py-0.5 rounded text-violet-300">openrouter_api_key</code>.
+            under the name <code className="bg-zinc-700 px-1 py-0.5 rounded text-violet-300">OPENROUTER_API_KEY</code>{' '}
+            (same key used by WhatsApp AI — no need to add it twice).
           </p>
         </div>
       </form>
@@ -541,9 +573,10 @@ function SettingsTab({ onSaved }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function WebsiteBotPage() {
-  const [tab, setTab]       = useState('embed');
-  const [userId, setUserId] = useState('');
-  const [cfg, setCfg]       = useState(DEFAULT_CFG);
+  const [tab, setTab]         = useState('embed');
+  const [userId, setUserId]   = useState('');
+  const [cfg, setCfg]         = useState(DEFAULT_CFG);
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     // Fetch profile to get user ID for embed snippet
@@ -557,6 +590,27 @@ export default function WebsiteBotPage() {
       .then(d => { if (d.config) setCfg({ ...DEFAULT_CFG, ...d.config }); })
       .catch(() => {});
   }, []);
+
+  async function toggleActive() {
+    if (toggling) return;
+    const next = !cfg.isActive;
+    setToggling(true);
+    // Optimistic update
+    setCfg(c => ({ ...c, isActive: next }));
+    try {
+      const res = await fetch(`${API}/websitebot/config`, {
+        method: 'PUT',
+        headers: authHdr(),
+        body: JSON.stringify({ ...cfg, isActive: next }),
+      });
+      const d = await res.json();
+      if (d.config) setCfg(c => ({ ...c, ...d.config }));
+    } catch {
+      // Revert on failure
+      setCfg(c => ({ ...c, isActive: !next }));
+    }
+    setToggling(false);
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
@@ -573,13 +627,27 @@ export default function WebsiteBotPage() {
             <p className="text-sm text-zinc-400">One script tag — full AI chatbot on any website</p>
           </div>
 
-          {/* Quick status */}
-          <div className={`ml-auto flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${
-            cfg.isActive ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-zinc-700 bg-zinc-800 text-zinc-500'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${cfg.isActive ? 'bg-green-400' : 'bg-zinc-600'}`} />
-            {cfg.isActive ? 'Active' : 'Inactive'}
-          </div>
+          {/* Quick on/off toggle */}
+          <button
+            onClick={toggleActive}
+            disabled={toggling}
+            title={cfg.isActive ? 'Click to hide bot from website' : 'Click to show bot on website'}
+            className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium transition-all disabled:opacity-60 ${
+              cfg.isActive
+                ? 'border-green-500/40 bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+            }`}
+          >
+            {toggling ? (
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+            ) : (
+              <span className={`w-2 h-2 rounded-full ${cfg.isActive ? 'bg-green-400' : 'bg-zinc-500'}`} />
+            )}
+            {cfg.isActive ? 'Live on website' : 'Hidden from website'}
+          </button>
         </div>
 
         {/* Tabs */}
